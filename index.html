@@ -1,0 +1,1811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ramayanam Story Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700&family=Noto+Sans+Telugu:wght@400;500;700&family=Ramabhadra&family=Yatra+One&display=swap">
+<style>
+/* Layout: a phone-shaped game frame centred on the page. Scene art fills the top; a palm-leaf
+   dialogue panel and the choices sit at the bottom. One deliberate dark look: it's a game screen. */
+:root {
+  --page: #120F24;
+  --frame: #1F1A38;
+  --frame-edge: #352D5A;
+  --on-dark: #F4EBD8;
+  --on-dark-muted: #B9AFCC;
+  --leaf: #EBD9A6;
+  --leaf-deep: #DCC386;
+  --leaf-edge: #C2A262;
+  --choice: #F6EBCB;
+  --choice-hover: #FFF4D8;
+  --ink: #3A2714;
+  --ink-soft: #6B5233;
+  --saffron: #E8742A;
+  --gold: #E0AE3A;
+  --lotus: #E58FA6;
+  --c-rama: #4A6FD0;
+  --c-lakshmana: #C9952A;
+  --c-hanuman: #DD6526;
+  --c-sugriva: #5E9446;
+  --font-display: "Yatra One", "Mukta", Georgia, serif;
+  --font-te-display: "Ramabhadra", "Noto Sans Telugu", "Nirmala UI", sans-serif;
+  --font-body: "Mukta", "Noto Sans Telugu", "Segoe UI", system-ui, sans-serif;
+  --font-te: "Noto Sans Telugu", "Nirmala UI", "Gautami", "Mukta", sans-serif;
+  color-scheme: dark;
+}
+html { height: 100%; box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--page);
+  color: var(--on-dark);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  display: flex;
+  justify-content: center;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body.te { font-family: var(--font-te); }
+body.te :not(.en-title) { letter-spacing: 0; }
+
+.game {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  max-height: 860px;
+  display: flex;
+  flex-direction: column;
+  background: var(--frame);
+  border: 1px solid var(--frame-edge);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45);
+}
+.app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Top bar */
+.bar {
+  flex: none;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--frame);
+  border-bottom: 1px solid var(--frame-edge);
+}
+.bar .spacer {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--on-dark-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .05);
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.btn-ghost {
+  font: inherit;
+  font-size: 13px;
+  color: var(--on-dark);
+  background: transparent;
+  border: 1px solid var(--frame-edge);
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, .06); }
+.lang { display: inline-flex; border: 1px solid var(--frame-edge); border-radius: 999px; overflow: hidden; flex: none; }
+.lang button {
+  font: inherit;
+  font-size: 13px;
+  padding: 3px 10px;
+  background: transparent;
+  color: var(--on-dark-muted);
+  border: 0;
+  cursor: pointer;
+}
+.lang .te-btn { font-family: var(--font-te); }
+.lang button[aria-pressed="true"] { background: var(--on-dark); color: var(--frame); }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+
+/* Play view */
+.view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.scene { position: relative; flex: 1 1 auto; min-height: 140px; overflow: hidden; cursor: pointer; }
+.scene svg, .scene-bg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 45%;
+  background: linear-gradient(to bottom, rgba(31, 26, 56, 0), var(--frame));
+  pointer-events: none;
+}
+.flame { transform-origin: 200px 238px; animation: flick 1.4s ease-in-out infinite alternate; }
+@keyframes flick { from { transform: scale(1, 1); } to { transform: scale(.96, 1.08); } }
+
+/* Characters: each breathes and blinks; whoever is speaking bobs, talks and gestures */
+.cast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  height: 80%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2%;
+  padding: 0 6%;
+  pointer-events: none;
+}
+.cast.split { justify-content: space-between; padding: 0 3%; }
+.cast.right { justify-content: flex-end; padding-right: 12%; }
+.cast.title-cast { top: 6%; bottom: auto; height: 36%; }
+.actor {
+  flex: none;
+  height: 100%;
+  max-height: 250px;
+  aspect-ratio: 100 / 180;
+  transform-origin: 50% 100%;
+  transition: filter .3s ease, transform .3s ease;
+}
+.actor-in { width: 100%; height: 100%; animation: enter .55s cubic-bezier(.2, .8, .3, 1) backwards; animation-delay: var(--enter, 0s); }
+.actor svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.cast.has-speaker .actor:not(.speaking) { filter: brightness(.68) saturate(.8); transform: scale(.93); }
+.scene[data-bg="night"] .actor { filter: brightness(.8) saturate(.85); }
+.figure { transform-origin: 50px 172px; animation: breathe 3.4s ease-in-out infinite; }
+.speaking .figure { animation: bob .9s ease-in-out infinite; }
+.eyes { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; animation-delay: var(--blink, 0s); }
+.mouth { transform-box: fill-box; transform-origin: center; transform: scaleY(.35); }
+.speaking .mouth { animation: talk .26s ease-in-out infinite alternate; }
+.tail { transform-origin: 60px 128px; animation: sway 2.8s ease-in-out infinite alternate; }
+.actor[data-kind="human"] .arm { transform-origin: 63px 62px; }
+.actor[data-kind="vanara"] .arm { transform-origin: 65px 66px; }
+.speaking .arm { animation: gesture 1.6s ease-in-out infinite alternate; }
+@keyframes enter { from { opacity: .15; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.018); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+@keyframes talk { from { transform: scaleY(.3); } to { transform: scaleY(1.25); } }
+@keyframes sway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+@keyframes gesture { from { transform: rotate(0deg); } to { transform: rotate(-24deg); } }
+
+/* Mini-games: the player's own vanara on the scene, controls on the palm leaf */
+.view.gaming .talk { margin-top: 0; padding-top: 12px; }
+.mg { position: absolute; inset: 0; z-index: 4; touch-action: none; user-select: none; -webkit-user-select: none; }
+.mg-player { position: absolute; left: 50%; bottom: 6%; height: 30%; aspect-ratio: 100 / 180; transform: translateX(-50%); }
+.mg-player.small { height: 22%; }
+.mg-player.leaper { left: 45%; }
+.mg-player .actor { height: 100%; max-height: none; }
+.mg-player.moving .figure { animation: bob .32s ease-in-out infinite; }
+.mg-bundle { position: absolute; left: 50%; top: -10%; width: 12%; aspect-ratio: 1; animation: spin 1.4s linear infinite; }
+.mg-bundle.caught { animation: none; transform: translate(-50%, -50%); }
+.mg-bundle svg { width: 100%; height: 100%; display: block; }
+@keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+.mg-flash {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(18, 15, 36, .9);
+  color: var(--on-dark);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: toast-in .25s ease-out;
+}
+.mg-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .4);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+  overflow: hidden;
+}
+.mg-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--gold); }
+.mg-eye {
+  position: absolute;
+  left: 12px;
+  top: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(18, 15, 36, .88);
+  color: var(--on-dark);
+  font-size: 13px;
+}
+.mg-eye .dot { width: 10px; height: 10px; border-radius: 50%; background: #5FBF6A; }
+.mg-eye[data-state="turn"] .dot { background: #F2B84B; }
+.mg-eye[data-state="look"] .dot { background: #F0503C; box-shadow: 0 0 0 4px rgba(240, 80, 60, .3); }
+.actor.alert { filter: drop-shadow(0 0 10px rgba(240, 80, 60, .95)); }
+.mg-sticks { position: absolute; left: 50%; bottom: 10%; width: 34%; aspect-ratio: 2 / 1; transform: translateX(-50%); }
+.mg-sticks svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.mg-rub { transform-box: fill-box; transform-origin: 50% 100%; transform: rotate(-9deg); transition: transform .07s linear; }
+.mg-sticks.flip .mg-rub { transform: rotate(9deg); }
+.mg-flame { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(.2); opacity: 0; transition: opacity .4s ease, transform .5s ease; }
+.mg-sticks.lit .mg-flame { opacity: 1; transform: scale(1); }
+.spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #FFD27A;
+  box-shadow: 0 0 6px #FFB25A;
+  pointer-events: none;
+  animation: spark .6s ease-out forwards;
+}
+@keyframes spark { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(var(--dx, 0px), -70px); opacity: 0; } }
+.mg-meter {
+  position: absolute;
+  left: 18px;
+  bottom: 8%;
+  width: 18px;
+  height: 64%;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
+  overflow: hidden;
+}
+.mg-zone { position: absolute; z-index: 1; left: 0; right: 0; bottom: 85%; height: 14%; background: rgba(224, 174, 58, .6); }
+.mg-meter .mg-fill { position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 0; background: var(--saffron); }
+.game-panel { gap: 6px; }
+.mg-title { margin: 0; font-family: var(--font-display); font-size: 21px; line-height: 1.2; color: var(--ink); }
+body.te .mg-title { font-family: var(--font-te-display); }
+.mg-status { margin: 0; min-height: 1.5em; font-size: 14px; font-weight: 700; color: #8A4B12; font-variant-numeric: tabular-nums; }
+.mg-controls { display: flex; gap: 10px; margin-top: 4px; }
+.mg-btn {
+  flex: 1;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 12px 10px;
+  color: var(--ink);
+  background: var(--choice);
+  border: 1.5px solid var(--leaf-edge);
+  border-radius: 12px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mg-btn.on, .mg-btn:active { background: var(--gold); }
+
+.talk {
+  flex: 0 1 auto;
+  max-height: 66%;
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+  margin-top: -40px;
+  padding: 0 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.speaker {
+  align-self: flex-start;
+  position: relative;
+  z-index: 3;
+  margin: 0 0 -20px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px 3px 3px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 999px;
+  background: var(--frame);
+  font-size: 14px;
+  font-weight: 700;
+}
+.face {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35);
+}
+.leaf {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+  padding: 24px 30px 14px;
+  color: var(--ink);
+  background-color: var(--leaf);
+  background-image:
+    repeating-linear-gradient(180deg, rgba(110, 80, 30, .08) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, var(--leaf), var(--leaf-deep));
+  border: 1px solid var(--leaf-edge);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.leaf.waiting { cursor: default; }
+/* The two string holes of a palm-leaf manuscript */
+.leaf::before, .leaf::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--frame);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .55);
+}
+.leaf::before { left: 11px; }
+.leaf::after { right: 11px; }
+.text { margin: 0; font-size: 17px; line-height: 1.55; animation: rise .28s ease-out; }
+body.te .text { font-size: 16.5px; line-height: 1.8; }
+@keyframes rise { from { opacity: .35; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.tap { margin: 0; font-size: 12px; color: var(--ink-soft); text-align: right; letter-spacing: .04em; }
+.verse {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .38);
+  color: var(--ink);
+  line-height: 1.7;
+}
+.verse[lang="sa"] { font-family: var(--font-display); font-size: 17px; }
+.verse[lang="te"] { font-family: var(--font-te-display); font-size: 16px; line-height: 1.9; }
+.verse .src {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  letter-spacing: .04em;
+}
+body.te .verse .src { font-family: var(--font-te); }
+
+.choices { display: flex; flex-direction: column; gap: 8px; }
+.choice {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 15.5px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--choice);
+  border: 1px solid var(--leaf-edge);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .12s ease, background-color .12s ease;
+}
+.choice:hover { background: var(--choice-hover); transform: translateY(-1px); }
+.choice .ctext { flex: 1; min-width: 0; }
+.choice.premium { border: 1.5px solid var(--gold); background: linear-gradient(180deg, #FFF3D1, #F4DFA8); }
+.choice.locked { opacity: .6; cursor: not-allowed; }
+.choice.locked:hover { transform: none; }
+.cost {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8A4B12;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Toasts */
+.toasts {
+  position: absolute;
+  top: 54px;
+  left: 12px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.toast {
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--on-dark-muted);
+  border-radius: 999px;
+  background: rgba(18, 15, 36, .94);
+  color: var(--on-dark);
+  font-size: 13.5px;
+  text-align: center;
+  animation: toast-in .25s ease-out;
+}
+.toast[data-k="hanuman"] { border-color: var(--c-hanuman); }
+.toast[data-k="sugriva"] { border-color: var(--c-sugriva); }
+.toast[data-k="lakshmana"] { border-color: var(--c-lakshmana); }
+.toast[data-k="v"] { border-color: var(--gold); }
+.toast[data-k="lotus"] { border-color: var(--lotus); }
+@keyframes toast-in { from { opacity: .4; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* Bonds sheet */
+.overlay { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-end; background: rgba(12, 10, 26, .72); }
+.sheet {
+  width: 100%;
+  max-height: 85%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 22px;
+  background: var(--frame);
+  border-top: 1px solid var(--frame-edge);
+  border-radius: 18px 18px 0 0;
+}
+.sheet h2, .block h3 {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--on-dark-muted);
+}
+.stat { display: grid; grid-template-columns: 38% 1fr 24px; align-items: center; gap: 10px; font-size: 14.5px; }
+.track { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.fill { display: block; height: 100%; border-radius: inherit; }
+.num { text-align: right; color: var(--on-dark-muted); font-variant-numeric: tabular-nums; }
+
+/* Title screen */
+.title-screen { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.scene-bg { position: absolute; inset: 0; }
+.title-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(31, 26, 56, 0) 10%, rgba(31, 26, 56, .75) 45%, var(--frame) 68%);
+  pointer-events: none;
+}
+.title-body { position: relative; z-index: 2; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 24px 22px 22px; }
+.te-title { margin: 0; font-family: var(--font-te-display); font-weight: 400; font-size: clamp(44px, 13vw, 60px); line-height: 1.2; color: var(--on-dark); }
+.en-title { margin: -8px 0 0; font-family: var(--font-display); font-size: 18px; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
+.chap { margin: 4px 0 0; font-size: 13.5px; color: var(--on-dark-muted); }
+.chap strong { color: var(--on-dark); font-weight: 500; }
+.premise { margin: 0; max-width: 38ch; font-size: 15.5px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 12.5px; color: var(--on-dark-muted); }
+.field input {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 12px;
+  color: var(--on-dark);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--frame-edge);
+  border-radius: 10px;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 22px;
+  color: #1B0F05;
+  background: var(--saffron);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.btn.secondary { color: var(--on-dark); background: transparent; border: 1px solid var(--frame-edge); font-weight: 500; }
+.note { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--on-dark-muted); }
+.note svg { flex: none; }
+
+/* End screen */
+.end { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 22px 20px 24px; }
+.kicker { margin: 0; font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--on-dark-muted); }
+.label { margin: 0 0 2px; font-size: 12.5px; color: var(--on-dark-muted); }
+.earned { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--gold); }
+body.te .earned { font-family: var(--font-te-display); }
+.desc { margin: 0; }
+.block { display: flex; flex-direction: column; gap: 10px; }
+.recap { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
+.small { margin: 0; font-size: 13.5px; color: var(--on-dark-muted); }
+.small strong { color: var(--on-dark); font-weight: 500; }
+.teaser { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 1px dashed var(--frame-edge); border-radius: 14px; }
+.teaser span:last-child { font-size: 12.5px; color: var(--on-dark-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="game">
+  <div class="app" id="app"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Text ---------- */
+  var UI = {
+    chapter: { en: "Chapter 1", te: "అధ్యాయం 1" },
+    chapterName: { en: "The Bundle in Yellow Silk", te: "పసుపు పట్టులో మూట" },
+    premise: {
+      en: "Live the Ramayanam as one of Sugriva's vanaras. Your choices decide who trusts you, and who you become.",
+      te: "సుగ్రీవుడి వానరుల్లో ఒకరిగా రామాయణాన్ని నీ కళ్ళతో చూడు. ఎవరు నిన్ను నమ్ముతారో, నువ్వు ఎలా మారతావో నీ ఎంపికలే నిర్ణయిస్తాయి."
+    },
+    nameLabel: { en: "Your name", te: "నీ పేరు" },
+    defaultName: { en: "Madhu", te: "మధు" },
+    begin: { en: "Begin", te: "మొదలుపెట్టు" },
+    cont: { en: "Continue", te: "కొనసాగించు" },
+    newGame: { en: "New game", te: "కొత్త ఆట" },
+    lotusNote: { en: "Lotuses unlock special scenes. You start with 8.", te: "తామరలతో ప్రత్యేక సన్నివేశాలు తెరుచుకుంటాయి. మొదట నీ దగ్గర 8 ఉంటాయి." },
+    lotuses: { en: "Lotuses", te: "తామరలు" },
+    tap: { en: "Tap to continue", te: "ముందుకు వెళ్ళడానికి తాకండి" },
+    bonds: { en: "Bonds", te: "అనుబంధాలు" },
+    virtues: { en: "Virtues", te: "గుణాలు" },
+    close: { en: "Close", te: "మూసివేయి" },
+    restart: { en: "Restart chapter", te: "అధ్యాయం మళ్ళీ మొదలుపెట్టు" },
+    need: { en: "Need {n}", te: "{n} కావాలి" },
+    notEnough: { en: "Not enough lotuses for this scene.", te: "ఈ సన్నివేశానికి తామరలు సరిపోవు." },
+    bondUp: { en: "Bond with {who} +{n}", te: "{who} అనుబంధం +{n}" },
+    virtueUp: { en: "{v} +{n}", te: "{v} +{n}" },
+    lotusSpent: { en: "{n} lotuses spent", te: "{n} తామరలు ఖర్చయ్యాయి" },
+    endTitle: { en: "End of Chapter 1", te: "అధ్యాయం 1 ముగిసింది" },
+    yourTitle: { en: "Your title", te: "నీ బిరుదు" },
+    yourChoices: { en: "Your choices", te: "నీ ఎంపికలు" },
+    strongest: { en: "Strongest virtue", te: "బలమైన గుణం" },
+    lotusLeft: { en: "Lotuses left", te: "మిగిలిన తామరలు" },
+    next: { en: "Next · Chapter 2 · The Duel at Kishkindha", te: "తరువాత · అధ్యాయం 2 · కిష్కింధ ద్వంద్వయుద్ధం" },
+    soon: { en: "Coming soon", te: "త్వరలో" },
+    again: { en: "Play again", te: "మళ్ళీ ఆడు" },
+    source: { en: "Valmiki Ramayana · Kishkindha Kanda", te: "వాల్మీకి రామాయణం · కిష్కింధ కాండ" }
+  };
+
+  var PEOPLE = {
+    rama: { en: "Rama", te: "శ్రీరాముడు", with: { en: "Rama", te: "శ్రీరామునితో" }, color: "var(--c-rama)", glyph: { en: "R", te: "రా" } },
+    lakshmana: { en: "Lakshmana", te: "లక్ష్మణుడు", with: { en: "Lakshmana", te: "లక్ష్మణుడితో" }, color: "var(--c-lakshmana)", glyph: { en: "L", te: "ల" } },
+    hanuman: { en: "Hanuman", te: "హనుమ", with: { en: "Hanuman", te: "హనుమతో" }, color: "var(--c-hanuman)", glyph: { en: "H", te: "హ" } },
+    sugriva: { en: "Sugriva", te: "సుగ్రీవుడు", with: { en: "Sugriva", te: "సుగ్రీవుడితో" }, color: "var(--c-sugriva)", glyph: { en: "S", te: "సు" } }
+  };
+  var BONDS = ["hanuman", "sugriva", "lakshmana"];
+  var VIRTUES = {
+    courage: { en: "Courage", te: "ధైర్యం" },
+    wisdom: { en: "Wisdom", te: "వివేకం" },
+    compassion: { en: "Compassion", te: "కరుణ" }
+  };
+  var TITLES = {
+    hanuman: {
+      name: { en: "Hanuman's Shadow", te: "హనుమ నీడ" },
+      desc: { en: "Hanuman trusts you most. Wherever he goes next, you'll be close behind.", te: "హనుమ నిన్ను అందరికంటే ఎక్కువగా నమ్ముతాడు. అతను ఎక్కడికి వెళ్ళినా నువ్వు వెంటే ఉంటావు." }
+    },
+    lakshmana: {
+      name: { en: "Lakshmana's Companion", te: "లక్ష్మణుని తోడు" },
+      desc: { en: "Lakshmana has noticed you, and he remembers your name.", te: "లక్ష్మణుడు నిన్ను గమనించాడు. నీ పేరు అతనికి గుర్తుంది." }
+    },
+    sugriva: {
+      name: { en: "Sugriva's Shield", te: "సుగ్రీవుని అండ" },
+      desc: { en: "Sugriva leans on you. When the fight for Kishkindha comes, that will matter.", te: "సుగ్రీవుడు నీ మీద ఆధారపడుతున్నాడు. కిష్కింధ కోసం పోరాటం మొదలైనప్పుడు అది చాలా ముఖ్యం." }
+    }
+  };
+
+  var N = "narr";
+  function L(who, en, te, extra) {
+    var line = { who: who, en: en, te: te };
+    if (extra) for (var k in extra) line[k] = extra[k];
+    return line;
+  }
+
+  /* ---------- Story: Chapter 1 ---------- */
+  var STORY = {
+    n1: {
+      bg: "dawn",
+      lines: [
+        L(N, "Rishyamukha mountain, at dawn. Vali, king of Kishkindha, cannot set foot here. A sage's curse keeps him away.",
+             "ఋష్యమూక పర్వతం, తెల్లవారుజాము. కిష్కింధ రాజు వాలి ఇక్కడ అడుగు పెట్టలేడు. ఒక మహర్షి శాపం అతన్ని దూరంగా ఉంచుతోంది."),
+        L(N, "So his brother Sugriva hides here, with a handful of loyal vanaras. You are one of them, {name}.",
+             "అందుకే అతని తమ్ముడు సుగ్రీవుడు కొద్దిమంది నమ్మకమైన వానరులతో ఇక్కడ తలదాచుకున్నాడు. వాళ్ళలో నువ్వూ ఒకరివి, {name}."),
+        L(N, "Weeks ago, a cry rang out across the sky. A rakshasa was carrying a woman away through the air.",
+             "కొన్ని వారాల క్రితం ఆకాశంలో ఒక ఆర్తనాదం వినిపించింది. ఒక రాక్షసుడు ఒక స్త్రీని ఆకాశమార్గాన ఎత్తుకుపోతున్నాడు."),
+        L(N, "She saw the vanaras on this mountain and threw down a bundle tied in yellow silk. It's falling straight toward you!",
+             "కొండ మీద ఉన్న వానరులను చూసి, ఆమె పసుపు పట్టు వస్త్రంలో కట్టిన ఒక మూటను కిందకు విసిరింది. అది నేరుగా నీ వైపే పడుతోంది!")
+      ],
+      next: "g_catch"
+    },
+    g_catch: {
+      bg: "dawn",
+      game: "catch",
+      result: function (r) {
+        if (r.failed) return { fx: { f: { catchMissed: true } } };
+        if (r.misses === 0) return { fx: { v: { courage: 1 }, f: { catchFirst: true } }, toast: { en: "Clean catch!", te: "చక్కగా అందుకున్నావు!" } };
+        return { fx: { f: { catchLate: true } } };
+      },
+      next: "n1c"
+    },
+    n1c: {
+      bg: "dawn",
+      lines: [
+        L(N, "You caught it cleanly. Not a single stone was disturbed.",
+             "దాన్ని చక్కగా అందుకున్నావు. ఒక్క రాయి కూడా కదలలేదు.", { if: "catchFirst" }),
+        L(N, "It took a few tries, but you caught it before it struck the rocks.",
+             "కొన్ని ప్రయత్నాల తర్వాత, అది రాళ్ళకు తగలకముందే అందుకున్నావు.", { if: "catchLate" }),
+        L(N, "It slipped past you into a thorn bush. You dug it out with scratched hands.",
+             "అది నీ చేతుల్లోంచి జారి ముళ్ళపొదలో పడింది. చేతులు గీసుకుపోయినా దాన్ని బయటకు తీశావు.", { if: "catchMissed" }),
+        L(N, "As she vanished to the south, she kept calling two names: Rama! Lakshmana!",
+             "దక్షిణ దిక్కుకు కనుమరుగవుతూ ఆమె రెండు పేర్లు పిలుస్తూనే ఉంది: రామా! లక్ష్మణా!"),
+        L(N, "Sugriva gave the bundle to you to keep safe. It hasn't left your side since.",
+             "ఆ మూటను జాగ్రత్తగా దాచమని సుగ్రీవుడు నీకు అప్పగించాడు. అప్పటి నుంచి అది నీ దగ్గరే ఉంది."),
+        L(N, "This morning you are on lookout. Below, along the shore of Pampa lake, two men are walking.",
+             "ఈ ఉదయం నీది కాపలా వంతు. కింద, పంపా సరస్సు ఒడ్డున ఇద్దరు వ్యక్తులు నడుస్తూ వస్తున్నారు."),
+        L(N, "They wear bark cloth like hermits. But each carries a great bow on his shoulder.",
+             "మునుల్లా నారచీరలు కట్టుకున్నారు. కానీ ఇద్దరి భుజాల మీదా పెద్ద పెద్ద విల్లులు ఉన్నాయి.")
+      ],
+      choices: [
+        { en: "Run and warn Sugriva", te: "పరుగెత్తి వెళ్ళి సుగ్రీవుడిని హెచ్చరించు",
+          fx: { b: { sugriva: 1 }, v: { wisdom: 1 } },
+          toast: { en: "Sugriva will remember you came straight to him.", te: "నువ్వు నేరుగా తన దగ్గరకే వచ్చావని సుగ్రీవుడు గుర్తుంచుకుంటాడు." },
+          next: "n2" },
+        { en: "Creep down for a closer look", te: "దగ్గరగా చూడటానికి మెల్లగా కిందకు దిగు",
+          fx: { v: { courage: 1 }, f: { sawGrief: true } }, next: "g_creep" }
+      ]
+    },
+    g_creep: {
+      bg: "lake",
+      game: "creep",
+      result: function (r) {
+        if (r.spotted === 0) return { fx: { v: { wisdom: 1 }, f: { unseen: true } }, toast: { en: "Unseen!", te: "ఎవరికీ కనిపించలేదు!" } };
+        return { fx: { b: { lakshmana: 1 }, f: { spotted: true } } };
+      },
+      next: "n1b"
+    },
+    n1b: {
+      bg: "lake",
+      lines: [
+        L(N, "You slip from rock to rock until you can hear their voices.",
+             "రాయి నుంచి రాయికి దూకుతూ, వాళ్ళ మాటలు వినిపించేంత దగ్గరకు చేరావు."),
+        L(N, "Not a pebble moved. Neither of them knows you are there.",
+             "ఒక్క గులకరాయి కూడా కదలలేదు. నువ్వు అక్కడ ఉన్నావని వాళ్ళిద్దరికీ తెలియదు.", { if: "unseen" }),
+        L(N, "Lakshmana's eyes rest on your rock for a moment. He has seen you, but he says nothing.",
+             "లక్ష్మణుడి చూపు ఒక్క క్షణం నువ్వున్న రాయి మీద ఆగింది. నిన్ను చూశాడు, కానీ ఏమీ అనలేదు.", { if: "spotted" }),
+        L(N, "The elder one sits at the water's edge. The lake is full of blooming lotuses, and his eyes fill with tears as he looks at them.",
+             "పెద్దవాడు నీటి ఒడ్డున కూర్చున్నాడు. సరస్సు నిండా తామరలు విరిశాయి. వాటిని చూస్తూ అతని కళ్ళలో నీళ్ళు తిరుగుతున్నాయి."),
+        L("rama", "Lakshmana, everything here is so beautiful. And Sita is not beside me to see it.",
+                  "లక్ష్మణా, ఇక్కడ అంతా ఎంత అందంగా ఉందో. కానీ ఇది చూడటానికి సీత నా పక్కన లేదు."),
+        L("lakshmana", "Brother, grief won't bring her back. Our resolve will.",
+                       "అన్నా, దుఃఖం వదినను తిరిగి తీసుకురాదు. మన పట్టుదలే తీసుకొస్తుంది."),
+        L(N, "These don't sound like Vali's assassins. You hurry back up the mountain.",
+             "వీళ్ళు వాలి పంపిన హంతకుల్లా లేరు. నువ్వు వేగంగా కొండ పైకి తిరిగి వెళ్ళావు.")
+      ],
+      next: "n2"
+    },
+    n2: {
+      bg: "peak",
+      lines: [
+        L(N, "Sugriva has already seen them. He paces the peak, tail lashing.",
+             "సుగ్రీవుడు అప్పటికే వాళ్ళను చూశాడు. తోక విసురుతూ శిఖరం మీద అటూ ఇటూ తిరుగుతున్నాడు."),
+        L("sugriva", "See those bows? Vali sent them. He can't come here himself, so he sends archers.",
+                     "ఆ విల్లులు చూశావా? వాలే వాళ్ళను పంపాడు. తాను ఇక్కడికి రాలేడు, అందుకే విలుకాళ్ళను పంపాడు."),
+        L("hanuman", "Calm yourself, my king. Decisions made in fear go wrong. Let me find out who they are.",
+                     "శాంతించండి, ప్రభూ. భయంతో తీసుకునే నిర్ణయాలు తప్పుతాయి. నేను వెళ్ళి వాళ్ళెవరో తెలుసుకుని వస్తాను."),
+        L("sugriva", "Go, Hanuman. But not as yourself. Go dressed as a wandering monk, and find out what is in their hearts.",
+                     "వెళ్ళు, హనుమా. కానీ నీ రూపంలో కాదు. భిక్షువు వేషంలో వెళ్ళి వాళ్ళ మనసులో ఏముందో తెలుసుకో.")
+      ],
+      choices: [
+        { en: "Ask to go with Hanuman", te: "హనుమతో పాటు నేనూ వస్తానని అడుగు",
+          fx: { b: { hanuman: 1 }, v: { courage: 1 } }, next: "n3a" },
+        { en: "Stay and guard Sugriva", te: "ఇక్కడే ఉండి సుగ్రీవుడికి కాపలా కాయి",
+          fx: { b: { sugriva: 1 } }, next: "n3b" },
+        { en: "Tell Sugriva one of them was weeping. Assassins don't weep.", te: "వాళ్ళలో ఒకరు ఏడుస్తున్నారని సుగ్రీవుడికి చెప్పు. హంతకులు ఏడవరు.",
+          cond: "sawGrief",
+          fx: { b: { sugriva: 1 }, v: { wisdom: 1, compassion: 1 } },
+          toast: { en: "Sugriva's fear eases a little.", te: "సుగ్రీవుడి భయం కొంచెం తగ్గింది." },
+          next: "n2c" }
+      ]
+    },
+    n2c: {
+      bg: "peak",
+      lines: [
+        L("sugriva", "Weeping? Vali's men don't weep...",
+                     "ఏడుస్తున్నాడా? వాలి మనుషులు ఏడవరు..."),
+        L("sugriva", "Stay with me, {name}. We'll watch together.",
+                     "నాతోనే ఉండు, {name}. ఇద్దరం కలిసి చూద్దాం.")
+      ],
+      next: "n3b"
+    },
+    n3a: {
+      bg: "lake",
+      lines: [
+        L(N, "At the foot of the mountain, Hanuman changes. Where the great vanara stood, there is now a gentle wandering monk.",
+             "కొండ పాదాల దగ్గర హనుమ రూపం మారిపోయింది. మహా వానరుడు నిలబడిన చోట ఇప్పుడు ఒక సౌమ్యమైన భిక్షువు ఉన్నాడు."),
+        L("hanuman", "Hide in the reeds, {name}. Watch, and learn how to speak to strangers.",
+                     "రెల్లు పొదల్లో దాక్కో, {name}. గమనించు. అపరిచితులతో ఎలా మాట్లాడాలో నేర్చుకో."),
+        L(N, "Hanuman greets the brothers. His words are so graceful that, for the first time, the elder one smiles.",
+             "హనుమ ఆ అన్నదమ్ములను పలకరించాడు. అతని మాటలు ఎంత మధురంగా ఉన్నాయంటే, పెద్దవాడి ముఖంలో మొదటిసారి చిరునవ్వు కనిపించింది."),
+        L("rama", "Lakshmana, did you hear him? No one could speak like this without knowing all three Vedas.",
+                  "లక్ష్మణా, ఇతని మాటలు విన్నావా? మూడు వేదాలు తెలియనివాడు ఇలా మాట్లాడలేడు."),
+        L("lakshmana", "We are sons of King Dasharatha of Ayodhya. My brother's wife, Sita, has been taken. We have come to ask Sugriva for help.",
+                       "మేము అయోధ్య రాజు దశరథుని కుమారులం. మా అన్నగారి భార్య సీతను ఎవరో అపహరించారు. సుగ్రీవుని సాయం కోసం వచ్చాం."),
+        L(N, "The brothers have walked a long way. They look tired and thirsty.",
+             "ఎంతో దూరం నడిచి వచ్చిన ఆ అన్నదమ్ములు అలసిపోయి, దాహంతో ఉన్నారు.")
+      ],
+      choices: [
+        { en: "Bring them water from the Pampa in a lotus leaf", te: "తామర ఆకులో పంపా నీళ్ళు తెచ్చి ఇవ్వు",
+          cost: 4, fx: { b: { lakshmana: 2 }, v: { compassion: 2 } }, next: "n3water" },
+        { en: "Stay hidden, as Hanuman asked", te: "హనుమ చెప్పినట్టే దాక్కుని ఉండు",
+          fx: { b: { hanuman: 1 }, v: { wisdom: 1 } }, next: "n4" },
+        { en: "Step out and stand beside Hanuman", te: "బయటకు వచ్చి హనుమ పక్కన నిలబడు",
+          fx: { b: { lakshmana: 1 }, v: { courage: 1 } },
+          toast: { en: "Lakshmana noticed you.", te: "లక్ష్మణుడు నిన్ను గమనించాడు." },
+          next: "n3step" }
+      ]
+    },
+    n3water: {
+      bg: "lake",
+      lines: [
+        L(N, "You fold a lotus leaf into a cup and bring cool water up from the lake.",
+             "తామర ఆకును దొప్పగా మడిచి, సరస్సు నుంచి చల్లని నీళ్ళు తెచ్చావు."),
+        L("rama", "You gave before we asked. Thank you, friend.",
+                  "అడగకముందే ఇచ్చావు. కృతజ్ఞతలు, మిత్రమా."),
+        L("lakshmana", "What is your name?", "నీ పేరేమిటి?"),
+        L(N, "“{name},” you answer. Lakshmana says it once more, as if to remember it.",
+             "“{name}” అని చెప్పావు. గుర్తుంచుకోవాలన్నట్టు లక్ష్మణుడు ఆ పేరును మరోసారి పలికాడు.")
+      ],
+      next: "n4"
+    },
+    n3step: {
+      bg: "lake",
+      lines: [
+        L("lakshmana", "You walked out in front of two armed strangers. That takes courage.",
+                       "ఆయుధాలున్న ఇద్దరు అపరిచితుల ముందుకు నిర్భయంగా వచ్చావు. దానికి ధైర్యం కావాలి."),
+        L("hanuman", "(quietly) Next time, wait until I call you.",
+                     "(నెమ్మదిగా) ఈసారి నేను పిలిచే వరకు ఆగు.")
+      ],
+      next: "n4"
+    },
+    n3b: {
+      bg: "peak",
+      lines: [
+        L(N, "From the peak, you and Sugriva watch. Far below, the monk is talking with the two brothers.",
+             "శిఖరం మీద నుంచి నువ్వూ సుగ్రీవుడూ చూస్తున్నారు. కింద ఆ భిక్షువు అన్నదమ్ములతో మాట్లాడుతున్నాడు."),
+        L("sugriva", "I've hidden on this mountain for so long, {name}. My brother took my kingdom, and my wife Ruma.",
+                     "ఎంతో కాలంగా ఈ కొండ మీద తలదాచుకున్నాను, {name}. నా అన్న నా రాజ్యాన్నీ, నా భార్య రుమనూ లాక్కున్నాడు."),
+        L("sugriva", "If those two are friends, everything changes. If not...",
+                     "వాళ్ళు మిత్రులైతే అంతా మారిపోతుంది. కాకపోతే...")
+      ],
+      choices: [
+        { en: "Promise to stand by him, whatever happens", te: "ఏం జరిగినా అతనికి తోడుగా ఉంటానని మాటివ్వు",
+          fx: { b: { sugriva: 2 }, v: { courage: 1 } },
+          toast: { en: "Sugriva grips your shoulder.", te: "సుగ్రీవుడు నీ భుజం గట్టిగా పట్టుకున్నాడు." },
+          next: "n3b2" },
+        { en: "Remind him that Hanuman has never misjudged anyone", te: "హనుమ అంచనా ఎప్పుడూ తప్పలేదని గుర్తు చెయ్యి",
+          fx: { b: { sugriva: 1, hanuman: 1 }, v: { wisdom: 1 } }, next: "n3b2" }
+      ]
+    },
+    n3b2: {
+      bg: "peak",
+      lines: [
+        L(N, "Then, far below, something astonishing happens. The monk grows and grows, until Hanuman stands there in his true form.",
+             "అంతలో కింద ఒక అద్భుతం జరిగింది. ఆ భిక్షువు పెరిగి పెరిగి, హనుమ తన నిజరూపంలో నిలబడ్డాడు."),
+        L("sugriva", "If he's showing them his true form, they are friends.",
+                     "తన నిజరూపం చూపించాడంటే, వాళ్ళు మిత్రులే.")
+      ],
+      next: "n4"
+    },
+    n4: {
+      bg: "dusk",
+      lines: [
+        L(N, "In his true form, Hanuman carries Rama and Lakshmana up the mountain on his shoulders.",
+             "తన నిజరూపంలో హనుమ రామలక్ష్మణులను భుజాల మీద ఎక్కించుకుని కొండ పైకి తీసుకొచ్చాడు."),
+        L(N, "By evening, two exiled princes stand face to face.",
+             "సాయంత్రానికి, రాజ్యానికి దూరమైన ఇద్దరు రాకుమారులు ఎదురెదురుగా నిలబడ్డారు."),
+        L(N, "To seal their friendship, there must be a sacred fire.",
+             "వారి స్నేహానికి సాక్షిగా అగ్ని కావాలి."),
+        L("hanuman", "{name}, take these fire-sticks. Rub them hard, and fast!",
+                     "{name}, ఈ అరణి కర్రలు తీసుకో. గట్టిగా, వేగంగా రాపాడించు!")
+      ],
+      next: "g_kindle"
+    },
+    g_kindle: {
+      bg: "dusk",
+      game: "kindle",
+      result: function (r) {
+        if (r.assisted) return { fx: { f: { kindleHelp: true } } };
+        if (r.time < 7) return { fx: { b: { hanuman: 1 }, f: { kindleFast: true } }, toast: { en: "Hanuman grins at your sparks.", te: "నీ నిప్పురవ్వలు చూసి హనుమ నవ్వాడు." } };
+        return { fx: { f: { kindleDone: true } } };
+      },
+      next: "n4f"
+    },
+    n4f: {
+      bg: "fire",
+      lines: [
+        L(N, "Sparks leap and the tinder catches at once. Hanuman laughs and claps you on the back.",
+             "నిప్పురవ్వలు ఎగిరి వెంటనే అంటుకుంది. హనుమ నవ్వుతూ నీ వీపు తట్టాడు.", { if: "kindleFast" }),
+        L(N, "Your arms ache, but at last the tinder catches.",
+             "చేతులు నొప్పెట్టాయి, కానీ చివరికి మంట అంటుకుంది.", { if: "kindleDone" }),
+        L(N, "Your arms give out. Hanuman takes the sticks for a moment, and the tinder catches.",
+             "నీ చేతులు అలసిపోయాయి. హనుమ ఒక్క క్షణం కర్రలు అందుకున్నాడు, మంట అంటుకుంది.", { if: "kindleHelp" }),
+        L(N, "Rama and Sugriva walk around it together. With the fire as their witness, they become friends.",
+             "రాముడూ సుగ్రీవుడూ కలిసి ఆ అగ్ని చుట్టూ ప్రదక్షిణ చేశారు. అగ్నిసాక్షిగా ఇద్దరూ మిత్రులయ్యారు."),
+        L("sugriva", "{name}, bring the bundle.", "{name}, ఆ మూటను తీసుకురా.")
+      ],
+      choices: [
+        { en: "Place it gently at Rama's feet", te: "మూటను మెల్లగా శ్రీరాముని పాదాల దగ్గర ఉంచు",
+          fx: { v: { compassion: 1 } }, next: "n5" },
+        { en: "Tell Rama exactly how it fell, and the names she called", te: "అది ఎలా పడిందో, ఆమె ఏ పేర్లు పిలిచిందో వివరంగా చెప్పు",
+          fx: { v: { wisdom: 1 } }, next: "n4b" },
+        { en: "Give it to Lakshmana first, so he can steady his brother", te: "అన్నకు ధైర్యం చెప్పేందుకు ముందుగా లక్ష్మణుడికి ఇవ్వు",
+          fx: { b: { lakshmana: 2 } }, next: "n4c" }
+      ]
+    },
+    n4b: {
+      bg: "fire",
+      lines: [
+        L(N, "You tell him everything: the cry in the sky, the yellow silk, the two names.",
+             "అంతా చెప్పావు: ఆకాశంలో ఆర్తనాదం, పసుపు పట్టు, ఆ రెండు పేర్లు."),
+        L("rama", "She called our names... Even then, she believed we would come.",
+                  "మా పేర్లు పిలిచిందా... ఆ క్షణంలో కూడా మేము వస్తామని నమ్మింది.")
+      ],
+      next: "n5"
+    },
+    n4c: {
+      bg: "fire",
+      lines: [
+        L("lakshmana", "Thank you. Brother, be strong. We'll look together.",
+                       "మంచి పని చేశావు. అన్నా, ధైర్యంగా ఉండు. ఇద్దరం కలిసి చూద్దాం.")
+      ],
+      next: "n5"
+    },
+    n5: {
+      bg: "fire",
+      lines: [
+        L(N, "Rama unties the silk. Earrings, armlets and anklets glint in the firelight.",
+             "రాముడు ఆ పట్టు ముడి విప్పాడు. కుండలాలు, కేయూరాలు, నూపురాలు అగ్ని వెలుగులో మెరిశాయి."),
+        L(N, "He holds them to his heart and cannot speak.",
+             "వాటిని గుండెకు హత్తుకుని, మాట రాక అలాగే ఉండిపోయాడు."),
+        L("rama", "Lakshmana, look. Are these hers?", "లక్ష్మణా, చూడు. ఇవి సీతవేనా?"),
+        L("lakshmana",
+          "I do not know these armlets. I do not know these earrings. But the anklets I know. I bowed at her feet every day.",
+          "ఈ కేయూరాలు నాకు తెలియవు, ఈ కుండలాలూ తెలియవు. కానీ ఈ నూపురాలు నాకు తెలుసు. రోజూ వదిన పాదాలకు నమస్కరించేవాణ్ణి కదా.",
+          { verse: {
+              en: ["नाहं जानामि केयूरे नाहं जानामि कुण्डले ।", "नूपुरे त्वभिजानामि नित्यं पादाभिवन्दनात् ॥"],
+              te: ["నాహం జానామి కేయూరే నాహం జానామి కుండలే ।", "నూపురే త్వభిజానామి నిత్యం పాదాభివందనాత్ ॥"]
+          } }),
+        L("sugriva", "Rama, I give you my word. Wherever she has been taken, we will find her.",
+                     "రామా, మాట ఇస్తున్నాను. సీతను ఎక్కడికి తీసుకుపోయినా కనిపెడతాం."),
+        L("rama", "{name}, you kept these safe for her all this time. I will never forget it.",
+                  "{name}, ఆమె కోసం వీటిని ఇన్నాళ్ళూ కాపాడావు. ఇది నేను ఎప్పటికీ మరచిపోను.")
+      ],
+      next: "n6"
+    },
+    n6: {
+      bg: "night",
+      lines: [
+        L(N, "That night the camp sleeps. Only Hanuman sits at the edge of the peak, looking south.",
+             "ఆ రాత్రి శిబిరమంతా నిద్రపోయింది. హనుమ ఒక్కడే శిఖరం అంచున కూర్చుని దక్షిణ దిక్కుకు చూస్తున్నాడు.")
+      ],
+      choices: [
+        { en: "Go and sit with Hanuman", te: "హనుమ పక్కన వెళ్ళి కూర్చో",
+          cost: 6, fx: { b: { hanuman: 2 }, v: { courage: 1 } }, next: "n6a" },
+        { en: "Sleep. Tomorrow will be a long day.", te: "నిద్రపో. రేపు చాలా పని ఉంది.",
+          fx: { v: { wisdom: 1 } }, next: "end" }
+      ]
+    },
+    n6a: {
+      bg: "night",
+      lines: [
+        L("hanuman", "When I was a child, I saw the rising sun and thought it was a fruit. I leapt into the sky to catch it.",
+                     "చిన్నప్పుడు ఉదయించే సూర్యుణ్ణి చూసి పండు అనుకున్నాను. అందుకోవాలని ఆకాశానికి ఎగిరాను."),
+        L("hanuman", "Since then I've forgotten much of my strength. But something tells me I'll need it soon.",
+                     "ఆ తర్వాత నా బలం చాలావరకు మరచిపోయాను. కానీ త్వరలోనే అది అవసరమవుతుందని నా మనసు చెబుతోంది."),
+        L("hanuman", "Stay close to me in the days ahead, {name}.",
+                     "రాబోయే రోజుల్లో నా దగ్గరగా ఉండు, {name}."),
+        L("hanuman", "But first, show me how high you can leap.",
+                     "ముందు, నువ్వు ఎంత ఎత్తుకు ఎగరగలవో చూపించు.")
+      ],
+      next: "g_leap"
+    },
+    g_leap: {
+      bg: "night",
+      game: "leap",
+      result: function (r) {
+        if (r.best >= 85) return { fx: { v: { courage: 1 }, f: { leapHigh: true } }, toast: { en: "What a leap!", te: "ఎంత ఎత్తు ఎగిరావు!" } };
+        return { fx: { f: { leapLow: true } } };
+      },
+      next: "n6b"
+    },
+    n6b: {
+      bg: "night",
+      lines: [
+        L("hanuman", "Ha! The sun had better watch out.",
+                     "హా! ఇక సూర్యుడు జాగ్రత్తగా ఉండాలి.", { if: "leapHigh" }),
+        L("hanuman", "Not bad. Strength grows with practice, and so does courage.",
+                     "బాగుంది. సాధనతో బలం పెరుగుతుంది, ధైర్యం కూడా.", { if: "leapLow" })
+      ],
+      next: "end"
+    }
+  };
+
+  /* ---------- Scene art ---------- */
+  var FAR = "M0 175 L35 140 L70 158 L120 105 L165 150 L215 98 L268 146 L318 112 L362 140 L400 122 L400 300 L0 300 Z";
+  var NEAR = "M0 228 L45 196 L95 220 L150 182 L210 214 L262 188 L318 222 L366 198 L400 214 L400 300 L0 300 Z";
+  var LOW = "M0 212 L60 190 L120 204 L190 172 L260 198 L330 178 L400 196 L400 300 L0 300 Z";
+  var PAL = {
+    dawn: { sky: ["#2E2450", "#C8694F", "#F5C77E"], far: "#6E4A6E", near: "#2B1F3D" },
+    lake: { sky: ["#7FB9CF", "#CFE6E0", "#F1E4C2"], far: "#6C8C79", near: "#2F5040" },
+    peak: { sky: ["#5F97D4", "#9CC6EC", "#DCEBF6"], far: "#8E8BA6", near: "#4E4337" },
+    fire: { sky: ["#160C22", "#3C1730", "#7A3326"], far: "#341A2C", near: "#170C1C" },
+    dusk: { sky: ["#24163A", "#7A3A4A", "#D9875A"], far: "#3E2238", near: "#1E1226" },
+    night: { sky: ["#0A0B26", "#17184A", "#2A275E"], far: "#1C1A44", near: "#0B0A20" }
+  };
+  var LOTUS_SVG = '<svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true"><path d="M10 1C7 4 7 9 10 13C13 9 13 4 10 1Z" fill="#EE9DB3"/><path d="M10 13C6 12 3 9 2 5C5 6 8 9 10 13Z" fill="#D9718F"/><path d="M10 13C14 12 17 9 18 5C15 6 12 9 10 13Z" fill="#D9718F"/></svg>';
+
+  function lotusFlower(x, y, k) {
+    return '<g transform="translate(' + x + ' ' + y + ') scale(' + k + ')">' +
+      '<ellipse cx="0" cy="4" rx="14" ry="3.5" fill="#3F7A4A"/>' +
+      '<path d="M0 -10C-5 -4 -5 2 0 4C5 2 5 -4 0 -10Z" fill="#F2A3B8"/>' +
+      '<path d="M0 4C-7 3 -11 -1 -12 -6C-6 -5 -2 -1 0 4Z" fill="#E07F9B"/>' +
+      '<path d="M0 4C7 3 11 -1 12 -6C6 -5 2 -1 0 4Z" fill="#E07F9B"/></g>';
+  }
+
+  function sceneSVG(bg) {
+    var p = PAL[bg];
+    var defs = '<linearGradient id="sky-' + bg + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + p.sky[0] + '"/><stop offset=".62" stop-color="' + p.sky[1] + '"/><stop offset="1" stop-color="' + p.sky[2] + '"/></linearGradient>';
+    var body = '<rect width="400" height="300" fill="url(#sky-' + bg + ')"/>';
+    if (bg === "dawn") {
+      body += '<circle cx="232" cy="128" r="30" fill="#FFE0A0"/>' +
+        '<path d="' + FAR + '" fill="' + p.far + '"/><path d="' + NEAR + '" fill="' + p.near + '"/>';
+    } else if (bg === "lake") {
+      body += '<path d="' + FAR + '" fill="' + p.far + '"/>' +
+        '<rect x="0" y="210" width="400" height="90" fill="#3A6F80"/>' +
+        '<path d="M40 238H110M200 252H290M300 230H370M90 272H170" stroke="#9CC9D3" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".6"/>' +
+        lotusFlower(70, 250, 1) + lotusFlower(150, 236, 0.7) + lotusFlower(300, 262, 1.1) + lotusFlower(352, 242, 0.6) +
+        '<g stroke="' + p.near + '" stroke-width="2.4" stroke-linecap="round" fill="none">' +
+        '<path d="M8 300Q12 250 4 214"/><path d="M18 300Q20 258 26 222"/><path d="M28 300Q30 266 22 238"/>' +
+        '<path d="M372 300Q370 256 380 220"/><path d="M386 300Q388 262 396 232"/></g>';
+    } else if (bg === "peak") {
+      body += '<path d="' + LOW + '" fill="' + p.far + '"/>' +
+        '<path d="M0 300L0 206L38 192L92 200L148 232L176 300Z" fill="' + p.near + '"/>';
+    } else if (bg === "fire" || bg === "dusk") {
+      var lit = bg === "fire";
+      if (lit) defs += '<radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FFB25A" stop-opacity=".55"/><stop offset="1" stop-color="#FFB25A" stop-opacity="0"/></radialGradient>';
+      body += '<path d="' + FAR + '" fill="' + p.far + '"/>' +
+        (lit ? '<circle cx="200" cy="232" r="120" fill="url(#glow)"/>' : "") +
+        '<path d="M0 246Q200 230 400 246L400 300L0 300Z" fill="' + p.near + '"/>' +
+        '<g fill="#4A2A1A"><rect x="172" y="236" width="56" height="7" rx="3" transform="rotate(-12 200 240)"/><rect x="172" y="236" width="56" height="7" rx="3" transform="rotate(12 200 240)"/></g>' +
+        (lit ? '<g class="flame"><path d="M200 176C182 204 176 222 186 238L214 238C224 222 218 204 200 176Z" fill="#E8662A"/>' +
+          '<path d="M200 198C191 213 189 227 194 238L206 238C211 227 209 213 200 198Z" fill="#FFD27A"/></g>' : "");
+    } else if (bg === "night") {
+      for (var i = 0; i < 46; i++) {
+        body += '<circle cx="' + ((i * 89 + 17) % 400) + '" cy="' + ((i * 47 + 11) % 165) + '" r="' + ((i % 3) * 0.45 + 0.6) +
+          '" fill="#FFF7E0" opacity="' + (0.45 + (i % 4) * 0.13).toFixed(2) + '"/>';
+      }
+      body += '<circle cx="318" cy="62" r="17" fill="#F3E9CF"/>' +
+        '<path d="' + FAR + '" fill="' + p.far + '"/><path d="' + NEAR + '" fill="' + p.near + '"/>';
+    }
+    return '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>' + defs + '</defs>' + body + '</svg>';
+  }
+
+  /* ---------- Characters ---------- */
+  function eyes(y) {
+    return '<g class="eyes">' +
+      '<ellipse cx="45" cy="' + y + '" rx="2.8" ry="2.2" fill="#FFF8EC"/><circle cx="45" cy="' + (y + 0.3) + '" r="1.4" fill="#1A1210"/>' +
+      '<ellipse cx="55" cy="' + y + '" rx="2.8" ry="2.2" fill="#FFF8EC"/><circle cx="55" cy="' + (y + 0.3) + '" r="1.4" fill="#1A1210"/></g>';
+  }
+
+  // Rama and Lakshmana: bark-cloth exiles with matted hair and a bow over the shoulder
+  function human(o) {
+    return '<svg viewBox="0 0 100 180" aria-hidden="true"><g class="figure">' +
+      '<path d="M74 16Q98 86 74 158" fill="none" stroke="#6B4423" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<path d="M74 16L74 158" stroke="#EADFC4" stroke-width="1"/>' +
+      '<path d="M35 96L65 96L71 166L29 166Z" fill="' + o.cloth + '"/>' +
+      '<ellipse cx="40" cy="170" rx="7" ry="3.5" fill="' + o.skin + '"/><ellipse cx="60" cy="170" rx="7" ry="3.5" fill="' + o.skin + '"/>' +
+      '<path d="M37 62Q28 82 31 102" fill="none" stroke="' + o.skin + '" stroke-width="8" stroke-linecap="round"/>' +
+      '<path d="M35 60Q50 53 65 60L66 99L34 99Z" fill="' + o.skin + '"/>' +
+      '<path d="M38 60L64 96" stroke="' + o.sash + '" stroke-width="5" stroke-linecap="round"/>' +
+      '<rect x="33" y="94" width="34" height="6" rx="2" fill="' + o.sash + '"/>' +
+      '<path class="arm" d="M63 62Q72 82 69 102" fill="none" stroke="' + o.skin + '" stroke-width="8" stroke-linecap="round"/>' +
+      '<rect x="45" y="48" width="10" height="10" fill="' + o.skin + '"/>' +
+      '<circle cx="50" cy="38" r="14" fill="' + o.skin + '"/>' +
+      '<path d="M36 36Q38 22 50 22Q62 22 64 36Q58 28 50 28Q42 28 36 36Z" fill="' + o.hair + '"/>' +
+      '<ellipse cx="50" cy="18" rx="8" ry="7" fill="' + o.hair + '"/>' +
+      '<path d="M50 28L50 33" stroke="#C8322A" stroke-width="1.6" stroke-linecap="round"/>' +
+      eyes(39) +
+      '<ellipse class="mouth" cx="50" cy="46" rx="3.2" ry="1.8" fill="#5A1E1A"/>' +
+      '</g></svg>';
+  }
+
+  // Hanuman and Sugriva: vanaras with a swaying tail
+  function vanara(o) {
+    var mace = o.mace
+      ? '<path d="M22 122L30 52" stroke="#8A5A2B" stroke-width="3" stroke-linecap="round"/>' +
+        '<circle cx="31" cy="45" r="9" fill="#D9A62E" stroke="#9A6E1A" stroke-width="1.5"/>'
+      : "";
+    var crown = o.crown ? '<path d="M38 26L42 16L46 24L50 14L54 24L58 16L62 26Z" fill="#E0AE3A"/>' : "";
+    return '<svg viewBox="0 0 100 180" aria-hidden="true"><g class="figure">' +
+      '<path class="tail" d="M60 128C88 136 98 98 86 76C80 66 88 56 95 61" fill="none" stroke="' + o.fur + '" stroke-width="6" stroke-linecap="round"/>' +
+      mace +
+      '<path d="M38 120L36 166M62 120L64 166" stroke="' + o.fur + '" stroke-width="10" stroke-linecap="round"/>' +
+      '<ellipse cx="35" cy="170" rx="8" ry="4" fill="' + o.fur + '"/><ellipse cx="65" cy="170" rx="8" ry="4" fill="' + o.fur + '"/>' +
+      '<path d="M35 66Q24 90 28 112" fill="none" stroke="' + o.fur + '" stroke-width="9" stroke-linecap="round"/>' +
+      '<path d="M34 64Q50 56 66 64L68 108Q50 114 32 108Z" fill="' + o.fur + '"/>' +
+      '<ellipse cx="50" cy="86" rx="11" ry="14" fill="' + o.face + '" opacity=".55"/>' +
+      '<path d="M32 104Q50 110 68 104L70 128Q50 134 30 128Z" fill="' + o.cloth + '"/>' +
+      '<path class="arm" d="M65 66Q76 90 72 112" fill="none" stroke="' + o.fur + '" stroke-width="9" stroke-linecap="round"/>' +
+      '<circle cx="34" cy="38" r="6" fill="' + o.fur + '"/><circle cx="66" cy="38" r="6" fill="' + o.fur + '"/>' +
+      '<circle cx="50" cy="38" r="16" fill="' + o.fur + '"/>' +
+      '<ellipse cx="50" cy="44" rx="11" ry="9" fill="' + o.face + '"/>' +
+      '<ellipse cx="50" cy="34" rx="10" ry="5" fill="' + o.face + '"/>' +
+      crown +
+      eyes(35) +
+      '<ellipse class="mouth" cx="50" cy="48" rx="3.4" ry="2" fill="#5A1E1A"/>' +
+      '</g></svg>';
+  }
+
+  var ACTORS = {
+    rama: { kind: "human", svg: human({ skin: "#3D5FA8", hair: "#1E1712", cloth: "#8A6A3A", sash: "#D9A62E" }) },
+    lakshmana: { kind: "human", svg: human({ skin: "#D9A066", hair: "#2A1A12", cloth: "#7E6034", sash: "#B5502A" }) },
+    hanuman: { kind: "vanara", svg: vanara({ fur: "#C8551E", face: "#F0A36A", cloth: "#E8B23A", mace: true }) },
+    sugriva: { kind: "vanara", svg: vanara({ fur: "#A77A34", face: "#E2C08A", cloth: "#4F7F3A", crown: true }) }
+  };
+  // Who stands in each scene, and how they're spread around the fire or the peak edge
+  var CAST = {
+    g_creep: ["lakshmana", "rama"],
+    n1b: ["lakshmana", "rama"],
+    n2: ["hanuman", "sugriva"],
+    n2c: ["sugriva"],
+    n3a: ["hanuman", "rama", "lakshmana"],
+    n3water: ["rama", "lakshmana"],
+    n3step: ["hanuman", "lakshmana"],
+    n3b: ["sugriva"],
+    n3b2: ["sugriva"],
+    n4: ["rama", "hanuman", "sugriva"],
+    g_kindle: ["hanuman"],
+    n4f: ["rama", "sugriva"],
+    n4b: ["rama", "sugriva"],
+    n4c: ["lakshmana", "rama"],
+    n5: ["rama", "lakshmana"],
+    n6: ["hanuman"],
+    n6a: ["hanuman"],
+    g_leap: ["hanuman"],
+    n6b: ["hanuman"]
+  };
+  var LAYOUT = {
+    g_creep: "right", g_kindle: "right",
+    n4f: "split", n4b: "split", n4c: "split", n5: "split",
+    n6: "right", n6a: "right", g_leap: "right", n6b: "right"
+  };
+
+  function castMarkup(ids, who, layout) {
+    if (!ids.length) return "";
+    var any = ids.indexOf(who) > -1;
+    return '<div class="cast ' + (layout || "") + (any ? " has-speaker" : "") + '" id="cast">' +
+      ids.map(function (id, i) {
+        return '<div class="actor' + (id === who ? " speaking" : "") + '" data-who="' + id + '" data-kind="' + ACTORS[id].kind +
+          '" style="--enter:' + (i * 0.12) + 's;--blink:' + (i * 1.3) + 's"><div class="actor-in">' + ACTORS[id].svg + '</div></div>';
+      }).join("") + '</div>';
+  }
+
+  /* ---------- State ---------- */
+  var START_LOTUS = 8;
+  var SAVE_KEY = "ramayanam-ch1-v1";
+  var app = document.getElementById("app");
+  var toastBox = document.getElementById("toasts");
+
+  function fresh(keep) {
+    return {
+      screen: "title",
+      lang: keep && keep.lang ? keep.lang : "en",
+      name: keep && keep.name ? keep.name : "",
+      lotus: START_LOTUS,
+      bonds: { hanuman: 0, sugriva: 0, lakshmana: 0 },
+      virtues: { courage: 0, wisdom: 0, compassion: 0 },
+      flags: {},
+      node: "n1",
+      line: 0,
+      picks: []
+    };
+  }
+  var s = fresh();
+  var resumeTo = null;
+  var hasSave = false;
+  var overlay = false;
+
+  function t(obj) { return obj[s.lang] != null ? obj[s.lang] : obj.en; }
+  function fill(str, vars) { return String(str).replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; }); }
+  function esc(x) {
+    return String(x).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function playerName() { var n = (s.name || "").trim(); return n || t(UI.defaultName); }
+  function say(obj) { return esc(fill(t(obj), { name: playerName() })); }
+
+  // Lines can depend on what happened earlier (a mini-game result, a choice)
+  function linesOf(node) {
+    var all = node.lines || [];
+    var out = all.filter(function (l) { return (!l.if || s.flags[l.if]) && (!l.unless || !s.flags[l.unless]); });
+    return out.length ? out : all.slice(0, 1);
+  }
+  function curWho() {
+    var node = STORY[s.node];
+    if (node.game) return null;
+    var line = linesOf(node)[s.line];
+    return line ? line.who : null;
+  }
+
+  function save() {
+    try {
+      var data = JSON.parse(JSON.stringify(s));
+      if (data.screen === "title") data.screen = resumeTo || "title";
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+  function load() {
+    try { var raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+
+  /* ---------- Views ---------- */
+  function bar() {
+    var lotus = s.screen === "title" ? "" :
+      '<span class="pill" title="' + esc(t(UI.lotuses)) + '">' + LOTUS_SVG + '<span>' + s.lotus + '</span></span>';
+    var mid = s.screen === "play" ? t(UI.chapter) + " · " + t(UI.chapterName) : "";
+    var bonds = s.screen === "play" ? '<button class="btn-ghost" id="open-bonds" type="button">' + esc(t(UI.bonds)) + '</button>' : "";
+    return '<div class="bar">' + lotus + '<span class="spacer">' + esc(mid) + '</span>' + bonds +
+      '<div class="lang" role="group" aria-label="Language">' +
+      '<button type="button" data-lang="en" aria-pressed="' + (s.lang === "en") + '">EN</button>' +
+      '<button type="button" class="te-btn" data-lang="te" aria-pressed="' + (s.lang === "te") + '">తెలుగు</button>' +
+      '</div></div>';
+  }
+
+  function titleView() {
+    var actions = hasSave
+      ? '<button class="btn" id="continue" type="button">' + esc(t(UI.cont)) + '</button><button class="btn secondary" id="begin" type="button">' + esc(t(UI.newGame)) + '</button>'
+      : '<button class="btn" id="begin" type="button">' + esc(t(UI.begin)) + '</button>';
+    return '<section class="title-screen"><div class="scene-bg">' + sceneSVG("dawn") +
+      castMarkup(["lakshmana", "rama", "hanuman"], null, "title-cast") + '</div>' +
+      '<div class="title-body">' +
+      '<h1 class="te-title" lang="te">రామాయణం</h1>' +
+      '<p class="en-title">Ramayanam</p>' +
+      '<p class="chap"><strong>' + esc(t(UI.chapter)) + '</strong> · ' + esc(t(UI.chapterName)) + '</p>' +
+      '<p class="premise">' + esc(t(UI.premise)) + '</p>' +
+      '<div class="field"><label for="player-name">' + esc(t(UI.nameLabel)) + '</label>' +
+      '<input id="player-name" type="text" maxlength="24" autocomplete="off" value="' + esc(s.name) + '" placeholder="' + esc(t(UI.defaultName)) + '"></div>' +
+      '<div class="actions">' + actions + '</div>' +
+      '<p class="note">' + LOTUS_SVG + '<span>' + esc(t(UI.lotusNote)) + '</span></p>' +
+      '</div></section>';
+  }
+
+  function choiceButtons(node) {
+    return node.choices.map(function (c, i) {
+      if (c.cond && !s.flags[c.cond]) return "";
+      var locked = c.cost && s.lotus < c.cost;
+      var cost = c.cost ? '<span class="cost">' + LOTUS_SVG + (locked ? esc(fill(t(UI.need), { n: c.cost })) : c.cost) + '</span>' : "";
+      return '<button type="button" class="choice' + (c.cost ? " premium" : "") + (locked ? " locked" : "") + '" data-choice="' + i + '"' +
+        (locked ? ' aria-disabled="true"' : "") + '><span class="ctext">' + say(c) + '</span>' + cost + '</button>';
+    }).join("");
+  }
+
+  function playView() {
+    var node = STORY[s.node];
+    return '<section class="view' + (node.game ? " gaming" : "") + '"><div class="scene" id="scene" data-node="' + s.node + '" data-bg="' + node.bg + '">' +
+      sceneSVG(node.bg) + castMarkup(CAST[s.node] || [], curWho(), LAYOUT[s.node]) +
+      (node.game ? '<div class="mg" id="mg"></div>' : "") + '</div>' +
+      '<div class="talk" id="talk">' + talkHTML() + '</div></section>';
+  }
+
+  // Marks the current speaker without rebuilding the scene, so animations keep running
+  function setSpeaking() {
+    var cast = document.getElementById("cast");
+    if (!cast) return;
+    var who = curWho();
+    var any = false;
+    cast.querySelectorAll(".actor").forEach(function (a) {
+      var on = a.getAttribute("data-who") === who;
+      a.classList.toggle("speaking", on);
+      if (on) any = true;
+    });
+    cast.classList.toggle("has-speaker", any);
+  }
+
+  function talkHTML() {
+    var node = STORY[s.node];
+    if (node.game) {
+      var g = G[node.game];
+      return '<div class="leaf waiting game-panel"><p class="mg-title">' + esc(t(g.title)) + '</p>' +
+        '<p class="text">' + esc(t(g.help)) + '</p>' +
+        '<p class="mg-status" id="mg-status" aria-live="polite"></p>' + g.controls() + '</div>';
+    }
+    var lines = linesOf(node);
+    if (s.line > lines.length - 1) s.line = lines.length - 1;
+    var line = lines[s.line];
+    var last = s.line === lines.length - 1;
+    var waiting = last && !!node.choices;
+    var p = line.who !== N ? PEOPLE[line.who] : null;
+    var speaker = p ? '<div class="speaker"><span class="face" style="background:' + p.color + '" aria-hidden="true">' + esc(t(p.glyph)) + '</span><span>' + esc(t(p)) + '</span></div>' : "";
+    var verse = line.verse
+      ? '<blockquote class="verse" lang="' + (s.lang === "te" ? "te" : "sa") + '">' + line.verse[s.lang].map(esc).join("<br>") +
+        '<span class="src">' + esc(t(UI.source)) + '</span></blockquote>'
+      : "";
+    var tap = waiting ? "" : '<p class="tap">' + esc(t(UI.tap)) + ' ›</p>';
+    var leaf = '<div class="leaf' + (waiting ? " waiting" : "") + '" id="leaf"' + (waiting ? "" : ' role="button" tabindex="0"') + '>' +
+      verse + '<p class="text">' + say(line) + '</p>' + tap + '</div>';
+    var choices = waiting ? '<div class="choices">' + choiceButtons(node) + '</div>' : "";
+    return speaker + leaf + choices;
+  }
+
+  function statRows(kind) {
+    var rows = kind === "b"
+      ? BONDS.map(function (k) { return [t(PEOPLE[k]), s.bonds[k], PEOPLE[k].color]; })
+      : Object.keys(VIRTUES).map(function (k) { return [t(VIRTUES[k]), s.virtues[k], "var(--gold)"]; });
+    return rows.map(function (r) {
+      return '<div class="stat"><span>' + esc(r[0]) + '</span><span class="track"><span class="fill" style="width:' +
+        Math.min(100, r[1] / 5 * 100) + '%;background:' + r[2] + '"></span></span><span class="num">' + r[1] + '</span></div>';
+    }).join("");
+  }
+
+  function endView() {
+    var best = ["hanuman", "lakshmana", "sugriva"].reduce(function (a, b) { return s.bonds[b] > s.bonds[a] ? b : a; });
+    var vBest = Object.keys(VIRTUES).reduce(function (a, b) { return s.virtues[b] > s.virtues[a] ? b : a; });
+    var T = TITLES[best];
+    var recap = s.picks.map(function (pk) { return '<li>' + say(STORY[pk[0]].choices[pk[1]]) + '</li>'; }).join("");
+    return '<section class="end">' +
+      '<p class="kicker">' + esc(t(UI.endTitle)) + '</p>' +
+      '<div><p class="label">' + esc(t(UI.yourTitle)) + '</p><h2 class="earned">' + esc(t(T.name)) + '</h2></div>' +
+      '<p class="desc">' + esc(t(T.desc)) + '</p>' +
+      '<div class="block"><h3>' + esc(t(UI.bonds)) + '</h3>' + statRows("b") + '</div>' +
+      '<div class="block"><h3>' + esc(t(UI.virtues)) + '</h3>' + statRows("v") +
+      '<p class="small">' + esc(t(UI.strongest)) + ': <strong>' + esc(t(VIRTUES[vBest])) + '</strong></p></div>' +
+      '<div class="block"><h3>' + esc(t(UI.yourChoices)) + '</h3><ol class="recap">' + recap + '</ol></div>' +
+      '<p class="small">' + esc(t(UI.lotusLeft)) + ': <strong>' + s.lotus + '</strong></p>' +
+      '<div class="teaser"><span>' + esc(t(UI.next)) + '</span><span>' + esc(t(UI.soon)) + '</span></div>' +
+      '<div class="actions"><button class="btn" id="again" type="button">' + esc(t(UI.again)) + '</button></div>' +
+      '</section>';
+  }
+
+  function sheetView() {
+    return '<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(t(UI.bonds)) + '">' +
+      '<h2>' + esc(t(UI.bonds)) + '</h2>' + statRows("b") +
+      '<h2>' + esc(t(UI.virtues)) + '</h2>' + statRows("v") +
+      '<div class="actions"><button class="btn" id="close-sheet" type="button">' + esc(t(UI.close)) + '</button>' +
+      '<button class="btn secondary" id="restart" type="button">' + esc(t(UI.restart)) + '</button></div>' +
+      '</div></div>';
+  }
+
+  function render() {
+    stopGame();
+    document.documentElement.lang = s.lang === "te" ? "te" : "en";
+    document.body.classList.toggle("te", s.lang === "te");
+    var view = s.screen === "title" ? titleView() : s.screen === "end" ? endView() : playView();
+    app.innerHTML = bar() + view + (overlay ? sheetView() : "");
+    wire();
+    if (s.screen === "play" && STORY[s.node].game && !overlay) startGame();
+  }
+
+  /* ---------- Mini-games ---------- */
+  var G = {
+    catch: {
+      title: { en: "Catch the bundle!", te: "మూటను అందుకో!" },
+      help: { en: "Drag across the picture, or hold ◀ ▶, to get under the falling bundle.", te: "పడుతున్న మూట కిందకు చేరడానికి బొమ్మ మీద వేలితో జరుపు, లేదా ◀ ▶ నొక్కి పట్టుకో." },
+      status: { en: "Tries left: {n}", te: "మిగిలిన ప్రయత్నాలు: {n}" },
+      miss: { en: "Missed!", te: "తప్పింది!" },
+      got: { en: "Caught it!", te: "అందుకున్నావు!" },
+      left: { en: "Move left", te: "ఎడమకు జరుగు" },
+      right: { en: "Move right", te: "కుడికి జరుగు" },
+      controls: function () {
+        return '<div class="mg-controls"><button type="button" class="mg-btn" data-dir="-1" aria-label="' + esc(t(G.catch.left)) + '">◀</button>' +
+          '<button type="button" class="mg-btn" data-dir="1" aria-label="' + esc(t(G.catch.right)) + '">▶</button></div>';
+      }
+    },
+    creep: {
+      title: { en: "Creep down unseen", te: "కనిపించకుండా కిందకు దిగు" },
+      help: { en: "Hold the button to move. Freeze when Lakshmana looks your way.", te: "కదలడానికి బటన్ నొక్కి పట్టుకో. లక్ష్మణుడు ఇటు చూసినప్పుడు ఆగిపో." },
+      hold: { en: "Hold to creep", te: "నొక్కి పట్టుకుని కదులు" },
+      away: { en: "Watching the lake", te: "సరస్సు వైపు చూస్తున్నాడు" },
+      turn: { en: "Turning...", te: "తిరుగుతున్నాడు..." },
+      look: { en: "Looking this way!", te: "ఇటే చూస్తున్నాడు!" },
+      spotted: { en: "He saw something move!", te: "ఏదో కదలడం చూశాడు!" },
+      status: { en: "Times spotted: {n}", te: "కనిపించిన సార్లు: {n}" },
+      controls: function () {
+        return '<div class="mg-controls"><button type="button" class="mg-btn" data-hold>' + esc(t(G.creep.hold)) + '</button></div>';
+      }
+    },
+    kindle: {
+      title: { en: "Light the fire", te: "అగ్ని రగిలించు" },
+      help: { en: "Tap left and right in turn, as fast as you can, to rub the sticks.", te: "కర్రలు రాపాడించడానికి ఎడమ, కుడి మార్చి మార్చి వీలైనంత వేగంగా నొక్కు." },
+      left: { en: "◀ Rub", te: "◀ రుద్దు" },
+      right: { en: "Rub ▶", te: "రుద్దు ▶" },
+      status: { en: "Heat: {n}%", te: "వేడి: {n}%" },
+      lit: { en: "It caught!", te: "అంటుకుంది!" },
+      controls: function () {
+        return '<div class="mg-controls"><button type="button" class="mg-btn" data-rub="L">' + esc(t(G.kindle.left)) + '</button>' +
+          '<button type="button" class="mg-btn" data-rub="R">' + esc(t(G.kindle.right)) + '</button></div>';
+      }
+    },
+    leap: {
+      title: { en: "Leap!", te: "ఎగురు!" },
+      help: { en: "Hold to gather strength. Let go while the bar is in the gold band.", te: "బలం కూడగట్టడానికి నొక్కి పట్టుకో. బార్ బంగారు పట్టీలో ఉన్నప్పుడు వదిలెయ్." },
+      hold: { en: "Hold, then let go", te: "పట్టుకో, తర్వాత వదులు" },
+      status: { en: "Leap {n} of 3 · Best {b}%", te: "ఎగురు {n}/3 · ఉత్తమం {b}%" },
+      great: { en: "Great leap!", te: "అద్భుతం!" },
+      over: { en: "Too much! You stumbled.", te: "ఎక్కువైంది! తడబడ్డావు." },
+      ok: { en: "Higher next time!", te: "ఈసారి ఇంకా ఎత్తుకు!" },
+      controls: function () {
+        return '<div class="mg-controls"><button type="button" class="mg-btn" data-hold>' + esc(t(G.leap.hold)) + '</button></div>';
+      }
+    }
+  };
+
+  var PLAYER_SVG = vanara({ fur: "#7A5A3C", face: "#D8B48A", cloth: "#5B4C9A" });
+  var BUNDLE_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16Q20 10 32 16L34 32Q20 38 6 32Z" fill="#E8C43A" stroke="#B8901A" stroke-width="1.5"/>' +
+    '<path d="M14 15Q20 4 26 15" fill="#E8C43A" stroke="#B8901A" stroke-width="1.5"/><circle cx="20" cy="14" r="3" fill="#C9302C"/></svg>';
+  // A fire-drill: an upright stick twirled against a base board
+  var STICKS_SVG = '<svg viewBox="0 0 120 60" aria-hidden="true">' +
+    '<path class="mg-flame" d="M60 4C49 20 45 32 51 44L69 44C75 32 71 20 60 4Z" fill="#E8662A"/>' +
+    '<rect x="20" y="44" width="80" height="9" rx="4" fill="#5A341C"/>' +
+    '<g class="mg-rub"><rect x="56" y="8" width="8" height="40" rx="3" fill="#A06A34"/></g></svg>';
+  var GAMES = {};
+  var activeGame = null;
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function listen(el, type, fn) { el.addEventListener(type, fn); return function () { el.removeEventListener(type, fn); }; }
+  function loop(fn) {
+    var on = true, id = 0, last = performance.now();
+    function step(now) {
+      if (!on) return;
+      var dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      fn(dt);
+      if (on) id = requestAnimationFrame(step);
+    }
+    id = requestAnimationFrame(step);
+    return function () { on = false; cancelAnimationFrame(id); };
+  }
+  function playerSprite(cls) {
+    return '<div class="mg-player ' + (cls || "") + '"><div class="actor" data-kind="vanara">' + PLAYER_SVG + '</div></div>';
+  }
+  function flash(layer, msg) {
+    var el = document.createElement("div");
+    el.className = "mg-flash";
+    el.textContent = msg;
+    layer.appendChild(el);
+    setTimeout(function () { el.remove(); }, 900);
+  }
+  // Press-and-hold from buttons or the picture itself, plus the given keys
+  function holdInput(targets, keys, on, off) {
+    var offs = [];
+    targets.forEach(function (el) {
+      if (!el) return;
+      offs.push(listen(el, "pointerdown", function (e) { e.preventDefault(); el.classList.add("on"); on(); }));
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (type) {
+        offs.push(listen(el, type, function () { el.classList.remove("on"); off(); }));
+      });
+    });
+    if (keys.length) {
+      offs.push(listen(document, "keydown", function (e) { if (keys.indexOf(e.key) > -1) { e.preventDefault(); if (!e.repeat) on(); } }));
+      offs.push(listen(document, "keyup", function (e) { if (keys.indexOf(e.key) > -1) { e.preventDefault(); off(); } }));
+    }
+    return function () { offs.forEach(function (f) { f(); }); };
+  }
+  function cleanup(stopLoop, timers, offs) {
+    return { stop: function () { stopLoop(); timers.forEach(clearTimeout); offs.forEach(function (f) { f(); }); } };
+  }
+
+  GAMES.catch = function (layer, status, done) {
+    layer.innerHTML = '<div class="mg-bundle">' + BUNDLE_SVG + '</div>' + playerSprite();
+    var bundle = layer.querySelector(".mg-bundle");
+    var player = layer.querySelector(".mg-player");
+    var timers = [], offs = [];
+    var px = 50, target = null, dir = 0, misses = 0, tries = 3, over = false;
+    var x0 = 50, phase = 0, by = -10, bx = 50, wait = 0.5;
+    function drop() { x0 = rand(18, 82); phase = rand(0, 6); by = -10; wait = 0.6; }
+    function show() { status.textContent = fill(t(G.catch.status), { n: tries - misses }); }
+    function aim(e) {
+      var r = layer.getBoundingClientRect();
+      target = clamp((e.clientX - r.left) / r.width * 100, 8, 92);
+      dir = 0;
+    }
+    offs.push(listen(layer, "pointerdown", aim), listen(layer, "pointermove", aim));
+    app.querySelectorAll("[data-dir]").forEach(function (b) {
+      var v = +b.getAttribute("data-dir");
+      offs.push(holdInput([b], [], function () { dir = v; target = null; }, function () { if (dir === v) dir = 0; }));
+    });
+    offs.push(listen(document, "keydown", function (e) {
+      if (e.key === "ArrowLeft" || e.key === "a") { dir = -1; target = null; }
+      if (e.key === "ArrowRight" || e.key === "d") { dir = 1; target = null; }
+    }), listen(document, "keyup", function (e) {
+      if ((e.key === "ArrowLeft" || e.key === "a") && dir < 0) dir = 0;
+      if ((e.key === "ArrowRight" || e.key === "d") && dir > 0) dir = 0;
+    }));
+    show();
+    drop();
+    var stopLoop = loop(function (dt) {
+      if (dir) px += dir * 80 * dt;
+      else if (target != null) { var d = target - px; px += (d > 0 ? 1 : -1) * Math.min(Math.abs(d), 120 * dt); }
+      px = clamp(px, 8, 92);
+      player.style.left = px + "%";
+      if (over) return;
+      if (wait > 0) { wait -= dt; bundle.style.visibility = "hidden"; return; }
+      bundle.style.visibility = "visible";
+      by += (30 + misses * 4) * dt;
+      bx = clamp(x0 + Math.sin(by / 13 + phase) * 13, 8, 92);
+      bundle.style.left = bx + "%";
+      bundle.style.top = by + "%";
+      if (by >= 62 && by <= 74 && Math.abs(bx - px) < 9) {
+        over = true;
+        bundle.classList.add("caught");
+        status.textContent = t(G.catch.got);
+        timers.push(setTimeout(function () { done({ misses: misses }); }, 800));
+      } else if (by > 92) {
+        misses++;
+        flash(layer, t(G.catch.miss));
+        if (misses >= tries) {
+          over = true;
+          bundle.style.visibility = "hidden";
+          timers.push(setTimeout(function () { done({ misses: misses, failed: true }); }, 900));
+        } else {
+          show();
+          drop();
+        }
+      }
+    });
+    return cleanup(stopLoop, timers, offs);
+  };
+
+  GAMES.creep = function (layer, status, done) {
+    layer.innerHTML = '<div class="mg-bar"><span class="mg-fill"></span></div>' +
+      '<div class="mg-eye" data-state="away"><span class="dot"></span><span class="lbl"></span></div>' + playerSprite("small");
+    var fillEl = layer.querySelector(".mg-fill");
+    var eye = layer.querySelector(".mg-eye");
+    var lbl = eye.querySelector(".lbl");
+    var player = layer.querySelector(".mg-player");
+    var watcher = document.querySelector('.actor[data-who="lakshmana"]');
+    var timers = [], offs = [];
+    var state = "away", clock = rand(1.4, 2.6), progress = 0, holding = false, spotted = 0, freeze = 0, over = false;
+    function setState(st) {
+      state = st;
+      eye.setAttribute("data-state", st);
+      lbl.textContent = t(G.creep[st]);
+      if (watcher) watcher.classList.toggle("alert", st === "look");
+    }
+    function show() { status.textContent = fill(t(G.creep.status), { n: spotted }); }
+    setState("away");
+    show();
+    offs.push(holdInput([app.querySelector("[data-hold]"), layer], [" ", "ArrowDown"],
+      function () { holding = true; }, function () { holding = false; }));
+    offs.push(function () { if (watcher) watcher.classList.remove("alert"); });
+    var stopLoop = loop(function (dt) {
+      if (over) return;
+      clock -= dt;
+      if (clock <= 0) {
+        if (state === "away") { setState("turn"); clock = 0.6; }
+        else if (state === "turn") { setState("look"); clock = rand(1.1, 1.8); }
+        else { setState("away"); clock = rand(1.3, 2.6); }
+      }
+      if (freeze > 0) freeze -= dt;
+      var moving = holding && freeze <= 0;
+      if (moving && state === "look") {
+        spotted++;
+        show();
+        freeze = 1;
+        progress = Math.max(0, progress - 12);
+        flash(layer, t(G.creep.spotted));
+        moving = false;
+      } else if (moving) {
+        progress = Math.min(100, progress + 16 * dt);
+      }
+      player.classList.toggle("moving", moving);
+      fillEl.style.width = progress + "%";
+      var k = progress / 100;
+      player.style.left = (12 + k * 40) + "%";
+      player.style.bottom = (52 - k * 44) + "%";
+      if (progress >= 100) {
+        over = true;
+        player.classList.remove("moving");
+        if (watcher) watcher.classList.remove("alert");
+        timers.push(setTimeout(function () { done({ spotted: spotted }); }, 500));
+      }
+    });
+    return cleanup(stopLoop, timers, offs);
+  };
+
+  GAMES.kindle = function (layer, status, done) {
+    layer.innerHTML = '<div class="mg-bar"><span class="mg-fill"></span></div><div class="mg-sticks">' + STICKS_SVG + '</div>';
+    var fillEl = layer.querySelector(".mg-fill");
+    var sticks = layer.querySelector(".mg-sticks");
+    var timers = [], offs = [];
+    var heat = 0, last = null, time = 0, over = false, shown = -1;
+    function rub(side) {
+      if (over) return;
+      heat = Math.min(100, heat + (side !== last ? 8 : 1.5));
+      last = side;
+      sticks.classList.toggle("flip");
+      var sp = document.createElement("span");
+      sp.className = "spark";
+      sp.style.left = rand(46, 54) + "%";
+      sp.style.bottom = "17%";
+      sp.style.setProperty("--dx", rand(-30, 30) + "px");
+      layer.appendChild(sp);
+      timers.push(setTimeout(function () { sp.remove(); }, 650));
+    }
+    app.querySelectorAll("[data-rub]").forEach(function (b) {
+      var side = b.getAttribute("data-rub");
+      offs.push(listen(b, "pointerdown", function (e) { e.preventDefault(); rub(side); }));
+      offs.push(listen(b, "click", function (e) { if (e.detail === 0) rub(side); }));
+    });
+    offs.push(listen(document, "keydown", function (e) {
+      if (e.repeat) return;
+      if (e.key === "ArrowLeft" || e.key === "a") rub("L");
+      if (e.key === "ArrowRight" || e.key === "d") rub("R");
+    }));
+    var stopLoop = loop(function (dt) {
+      if (over) return;
+      time += dt;
+      heat = Math.max(0, heat - 11 * dt);
+      fillEl.style.width = heat + "%";
+      var dec = Math.floor(heat / 10);
+      if (dec !== shown) { shown = dec; status.textContent = fill(t(G.kindle.status), { n: dec * 10 }); }
+      if (heat >= 99.5 || time > 15) {
+        over = true;
+        var helped = heat < 99.5;
+        sticks.classList.add("lit");
+        fillEl.style.width = "100%";
+        status.textContent = t(G.kindle.lit);
+        timers.push(setTimeout(function () { done({ time: time, assisted: helped }); }, 1000));
+      }
+    });
+    return cleanup(stopLoop, timers, offs);
+  };
+
+  GAMES.leap = function (layer, status, done) {
+    layer.innerHTML = '<div class="mg-meter"><span class="mg-zone"></span><span class="mg-fill"></span></div>' + playerSprite("leaper");
+    var meter = layer.querySelector(".mg-meter .mg-fill");
+    var player = layer.querySelector(".mg-player");
+    var timers = [], offs = [];
+    var tries = 0, best = 0, charging = false, clock = 0, power = 0, busy = false;
+    function show() { status.textContent = fill(t(G.leap.status), { n: Math.min(tries + 1, 3), b: Math.round(best) }); }
+    show();
+    function jump() {
+      busy = true;
+      tries++;
+      var p = power;
+      var score = p > 99 ? 55 : p;
+      best = Math.max(best, score);
+      flash(layer, t(score >= 85 ? G.leap.great : p > 99 ? G.leap.over : G.leap.ok));
+      var rise = layer.clientHeight * 0.55 * (score / 100);
+      player.style.transition = "transform .42s cubic-bezier(.2, .7, .3, 1)";
+      player.style.transform = "translate(-50%, " + (-rise) + "px)";
+      timers.push(setTimeout(function () {
+        player.style.transition = "transform .38s cubic-bezier(.6, 0, .9, .5)";
+        player.style.transform = "translate(-50%, 0)";
+      }, 440));
+      timers.push(setTimeout(function () {
+        power = 0;
+        meter.style.height = "0%";
+        if (tries >= 3) {
+          status.textContent = fill(t(G.leap.status), { n: 3, b: Math.round(best) });
+          done({ best: best });
+        } else {
+          busy = false;
+          show();
+        }
+      }, 1000));
+    }
+    offs.push(holdInput([app.querySelector("[data-hold]"), layer], [" ", "ArrowUp"],
+      function () { if (!busy) { charging = true; clock = 0; } },
+      function () { if (charging) { charging = false; jump(); } }));
+    var stopLoop = loop(function (dt) {
+      if (!charging) return;
+      clock += dt;
+      power = (1 - Math.cos(clock * Math.PI / 1.2)) / 2 * 100;
+      meter.style.height = power + "%";
+    });
+    return cleanup(stopLoop, timers, offs);
+  };
+
+  function startGame() {
+    var node = STORY[s.node];
+    var layer = document.getElementById("mg");
+    var status = document.getElementById("mg-status");
+    if (!layer || !status || !GAMES[node.game]) return;
+    activeGame = GAMES[node.game](layer, status, function (r) { stopGame(); finishGame(r); });
+  }
+  function stopGame() {
+    if (activeGame) { activeGame.stop(); activeGame = null; }
+  }
+
+  /* ---------- Actions ---------- */
+  function toast(msg, kind) {
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.setAttribute("data-k", kind || "note");
+    el.textContent = msg;
+    toastBox.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2600);
+  }
+
+  function go(id) {
+    if (id === "end") { s.screen = "end"; }
+    else { s.node = id; s.line = 0; }
+  }
+
+  function focusStep() {
+    var first = app.querySelector(".choice:not(.locked), .mg-btn");
+    var leaf = document.getElementById("leaf");
+    var target = first || (leaf && leaf.getAttribute("tabindex") ? leaf : null);
+    if (target) target.focus({ preventScroll: true });
+  }
+
+  function advance() {
+    var node = STORY[s.node];
+    var from = s.node;
+    if (node.game) return;
+    if (s.line < linesOf(node).length - 1) s.line++;
+    else if (node.choices) return;
+    else go(node.next);
+    save();
+    var talk = document.getElementById("talk");
+    if (s.screen === "play" && s.node === from && talk && !overlay) {
+      talk.innerHTML = talkHTML();
+      setSpeaking();
+      wirePlay();
+    } else {
+      render();
+    }
+    focusStep();
+  }
+
+  function applyFx(fx, note) {
+    var msgs = [];
+    if (note) msgs.push([t(note), "note"]);
+    var k;
+    for (k in fx.b || {}) { s.bonds[k] += fx.b[k]; msgs.push([fill(t(UI.bondUp), { who: t(PEOPLE[k].with), n: fx.b[k] }), k]); }
+    for (k in fx.v || {}) { s.virtues[k] += fx.v[k]; msgs.push([fill(t(UI.virtueUp), { v: t(VIRTUES[k]), n: fx.v[k] }), "v"]); }
+    for (k in fx.f || {}) s.flags[k] = fx.f[k];
+    return msgs;
+  }
+  function showToasts(msgs) {
+    msgs.forEach(function (m, j) { setTimeout(function () { toast(m[0], m[1]); }, j * 160); });
+  }
+
+  function choose(i) {
+    var node = STORY[s.node];
+    var c = node.choices[i];
+    if (c.cost && s.lotus < c.cost) { toast(t(UI.notEnough), "lotus"); return; }
+    if (c.cost) s.lotus -= c.cost;
+    var msgs = applyFx(c.fx || {}, c.toast);
+    if (c.cost) msgs.splice(c.toast ? 1 : 0, 0, [fill(t(UI.lotusSpent), { n: c.cost }), "lotus"]);
+    s.picks.push([s.node, i]);
+    go(c.next);
+    save();
+    render();
+    focusStep();
+    showToasts(msgs);
+  }
+
+  function finishGame(r) {
+    var node = STORY[s.node];
+    var out = node.result ? node.result(r) : {};
+    var msgs = applyFx(out.fx || {}, out.toast);
+    go(node.next);
+    save();
+    render();
+    focusStep();
+    showToasts(msgs);
+  }
+
+  function newGame(screen) {
+    s = fresh({ lang: s.lang, name: s.name });
+    s.screen = screen;
+    resumeTo = null;
+    overlay = false;
+    hasSave = screen === "play";
+    if (screen === "play") save(); else clearSave();
+    render();
+    focusStep();
+  }
+
+  function wirePlay() {
+    var leaf = document.getElementById("leaf");
+    if (leaf && !leaf.classList.contains("waiting")) {
+      leaf.onclick = advance;
+      leaf.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advance(); } };
+    }
+    var scene = document.getElementById("scene");
+    if (scene) scene.onclick = advance;
+    app.querySelectorAll("[data-choice]").forEach(function (b) {
+      b.onclick = function () { choose(+b.getAttribute("data-choice")); };
+    });
+  }
+
+  function wire() {
+    app.querySelectorAll("[data-lang]").forEach(function (b) {
+      b.onclick = function () { s.lang = b.getAttribute("data-lang"); save(); render(); };
+    });
+    var nameInput = document.getElementById("player-name");
+    if (nameInput) nameInput.oninput = function () { s.name = nameInput.value; };
+    var begin = document.getElementById("begin");
+    if (begin) begin.onclick = function () { newGame("play"); };
+    var cont = document.getElementById("continue");
+    if (cont) cont.onclick = function () { s.screen = resumeTo || "play"; resumeTo = null; save(); render(); focusStep(); };
+    wirePlay();
+    var openBonds = document.getElementById("open-bonds");
+    if (openBonds) openBonds.onclick = function () {
+      overlay = true; render();
+      var c = document.getElementById("close-sheet"); if (c) c.focus();
+    };
+    var closeSheet = document.getElementById("close-sheet");
+    if (closeSheet) closeSheet.onclick = function () { overlay = false; render(); focusStep(); };
+    var ov = document.getElementById("overlay");
+    if (ov) ov.onclick = function (e) { if (e.target === ov) { overlay = false; render(); focusStep(); } };
+    var restart = document.getElementById("restart");
+    if (restart) restart.onclick = function () { newGame("title"); };
+    var again = document.getElementById("again");
+    if (again) again.onclick = function () { newGame("title"); };
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (overlay && e.key === "Escape") { overlay = false; render(); focusStep(); return; }
+    if (s.screen !== "play" || overlay) return;
+    var a = document.activeElement;
+    if (a && (a.tagName === "BUTTON" || a.tagName === "INPUT" || a.id === "leaf")) return;
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advance(); }
+  });
+
+  /* ---------- Boot ---------- */
+  function valid(st) { return st && STORY[st.node] && st.bonds && st.virtues; }
+  function boot(data) {
+    if (data && valid(data.state)) {
+      s = Object.assign(fresh(), data.state);
+      resumeTo = data.resumeTo || null;
+      hasSave = !!data.hasSave;
+    } else {
+      var saved = load();
+      if (valid(saved)) {
+        s = Object.assign(fresh(), saved);
+        if (saved.screen && saved.screen !== "title") { resumeTo = saved.screen; hasSave = true; }
+        s.screen = "title";
+      }
+    }
+    render();
+  }
+  var hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(function () { return { state: s, resumeTo: resumeTo, hasSave: hasSave }; });
+  if (hot && hot.ready) hot.ready(boot); else boot(hot && hot.data ? hot.data : {});
+})();
+</script>
+</body>
+</html>
