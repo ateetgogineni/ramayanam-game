@@ -1,5 +1,7 @@
 # Ramayanam Story Game
 
+![Ramayanam story game start screen](docs/screenshot.png)
+
 A choice-driven story game set in the Ramayanam, playable in English and Telugu.
 
 You play an original young vanara in Sugriva's camp on Rishyamukha mountain. Rama, Sita and the
