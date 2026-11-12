@@ -1,5 +1,7 @@
 # Ramayanam Story Game
 
+**▶ Live demo: [https://ateetgogineni.github.io/ramayanam-game/](https://ateetgogineni.github.io/ramayanam-game/)**
+
 ![Ramayanam story game start screen](docs/screenshot.png)
 
 A choice-driven story game set in the Ramayanam, playable in English and Telugu.
